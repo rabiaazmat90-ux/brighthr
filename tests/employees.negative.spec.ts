@@ -97,6 +97,8 @@ test.describe('Add employee - negative paths', { tag: '@negative' }, () => {
   // --- Duplicate email ---------------------------------------------------------
 
   test('An email already used by another employee is blocked', async () => {
+    // Known defect: kept as test.fail() so Playwright flags it once BrightHR fixes the bug.
+    test.fail(true, 'Known BrightHR defect: an email already used by another employee is accepted and saved.');
     // Emails identify people (e.g. for invites), so two employees sharing one
     // could send someone else's invite to the wrong person. BrightHR does not
     // document this rule, so if it allows duplicates, record it as a finding.

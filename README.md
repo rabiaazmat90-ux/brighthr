@@ -117,6 +117,7 @@ npm run report              # open the last HTML report
 | Defect | Evidence | How the suite handles it |
 |---|---|---|
 | **The phone number field accepts letters and symbols.** Entering `abc-not-a-phone` or `!!!###$$$` leaves "Save new employee" enabled and the employee is saved. | The two phone-number negative tests on the BrightHR sandbox | Marked with `test.fail()` and a description, so the build stays green, the defect stays documented, and Playwright flags the tests when BrightHR fixes it. The dashboard shows them as **Known defect**. |
+| **Duplicate email addresses are accepted.** A second employee can be saved with an email another employee already uses. Because the profile offers "Send registration email", an invite could go to the wrong person. | The duplicate-email negative test on the BrightHR sandbox | Marked with `test.fail()` in the same way as the phone-number tests. |
 
 **How BrightHR blocks bad data:** on the real site, missing names, invalid emails and a 256-character name **disable the "Save new employee" button**. The tests treat a disabled Save button as "blocked", which is what a user experiences, instead of forcing a click a real user could not make.
 
