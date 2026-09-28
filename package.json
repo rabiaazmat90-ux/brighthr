@@ -1,0 +1,34 @@
+{
+  "name": "brighthr-qa-automation",
+  "version": "1.0.0",
+  "description": "BrightHR Lite technical task - Playwright + TypeScript E2E tests: add two employees and verify both are listed",
+  "private": true,
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:ui": "playwright test --ui",
+    "test:debug": "playwright test --debug",
+    "report": "playwright show-report",
+    "codegen": "playwright codegen https://sandbox-app.brighthr.com/lite",
+    "typecheck": "tsc --noEmit",
+    "diagnose": "node scripts/diagnose.cjs",
+    "test:positive": "JSON_REPORT=reports/positive.json playwright test --project=setup --project=chromium --grep @positive",
+    "test:negative": "JSON_REPORT=reports/negative.json playwright test --project=setup --project=chromium --grep @negative",
+    "test:unit": "JSON_REPORT=reports/unit.json playwright test --project=unit",
+    "test:e2e": "JSON_REPORT=reports/e2e.json playwright test --project=setup --project=chromium",
+    "dashboard": "node scripts/build-dashboard.cjs",
+    "dashboard:serve": "node scripts/build-dashboard.cjs && node scripts/dashboard-server.cjs",
+    "all": "npm run test:unit ; npm run test:e2e ; npm run dashboard:serve",
+    "all:headed": "npm run test:unit ; npm run test:e2e -- --headed ; npm run dashboard:serve"
+  },
+  "engines": {
+    "node": ">=20.19"
+  },
+  "devDependencies": {
+    "@faker-js/faker": "^10.6.0",
+    "@playwright/test": "^1.49.0",
+    "@types/node": "^22.0.0",
+    "dotenv": "^16.4.5",
+    "typescript": "^5.5.0"
+  }
+}

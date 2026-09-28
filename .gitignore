@@ -1,0 +1,18 @@
+node_modules/
+# Secrets - never commit
+.env
+# Saved login session (contains auth cookies) - never commit
+.auth/
+# Generated output
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+.DS_Store
+# Diagnostic output
+diagnose*.png
+diagnose.txt
+run-output.txt
+# Generated test results and dashboard
+reports/
+dashboard/

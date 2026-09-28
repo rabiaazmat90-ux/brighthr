@@ -1,0 +1,19 @@
+{
+  // WHY strict TypeScript: typos in page-object method names or employee
+  // fields fail at compile time (npm run typecheck / CI) instead of halfway
+  // through a slow browser run.
+  // ALTERNATIVE: plain JavaScript is quicker to start but those mistakes only
+  // show up at runtime.
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "noEmit": true
+  },
+  "include": ["**/*.ts"],
+  "exclude": ["node_modules"]
+}
