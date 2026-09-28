@@ -1,9 +1,10 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { type Employee, ukDate } from '../utils/employeeFactory';
+import { datePattern, phonePattern } from '../utils/displayPatterns';
 
 /**
- * Page Object for the Employees area: the left-hand navigation link,
- * the "Add employee" form and the employee list.
+ * Page object for the Employees area: the left-hand navigation link, the
+ * "Add employee" form and the employee list.
  */
 export class EmployeesPage {
   readonly page: Page;
@@ -12,17 +13,8 @@ export class EmployeesPage {
     this.page = page;
   }
 
-  // ---------------------------------------------------------------------------
-  // Locators
-  // ---------------------------------------------------------------------------
+  // --- Locators ----------------------------------------------------------------
 
-  /**
-   * WHY target the link by its visible name: the task says "navigate to the
-   * employee tab on the left-hand side of the panel", so we click it the way a
-   * user would instead of jumping straight to a URL.
-   * ALTERNATIVE: page.goto('/employee-hub') is faster, but it would skip the
-   * navigation step the scenario explicitly asks us to test.
-   */
   get employeesNavLink(): Locator {
     return this.page
       .getByRole('link', { name: /^employees$/i })
@@ -38,11 +30,7 @@ export class EmployeesPage {
     return this.page.getByRole('button', { name: /save( new)? employee|^save$/i }).first();
   }
 
-  /**
-   * One helper for every text field: accessible label first, then id / name
-   * attribute as a fallback. Keeps each field definition to a single line and
-   * gives the same resilience strategy everywhere (see LoginPage for the WHY).
-   */
+  /** A form field by its accessible label, with name/id/test-id fallbacks. */
   private field(label: RegExp, ...fallbackSelectors: string[]): Locator {
     let locator = this.page.getByLabel(label);
     for (const selector of fallbackSelectors) {
@@ -51,11 +39,6 @@ export class EmployeesPage {
     return locator.first();
   }
 
-  /**
-   * Fallback selectors follow BrightHR's own naming style, seen on its
-   * sign-up form: name="firstName", id="firstName-<suffix>",
-   * data-testid="first-name-input". [id^=...] means "id starts with".
-   */
   get firstNameInput() { return this.field(/first name/i, '[name="firstName"]', '[id^="firstName"]', '[data-testid="first-name-input"]'); }
   get lastNameInput() { return this.field(/last name|surname/i, '[name="lastName"]', '[id^="lastName"]', '[data-testid="last-name-input"]'); }
   get emailInput() { return this.field(/email/i, '[name="email"]', '[id^="email"]', '[data-testid="email-input"]'); }
@@ -63,29 +46,39 @@ export class EmployeesPage {
   get jobTitleInput() { return this.field(/job title/i, '[name="jobTitle"]', '[id^="jobTitle"]', '[data-testid="job-title-input"]'); }
   get startDateInput() { return this.field(/start date/i, '[name="startDate"]', '[id^="startDate"]', '[data-testid="start-date-input"]'); }
 
-  // ---------------------------------------------------------------------------
-  // Actions
-  // ---------------------------------------------------------------------------
+  get searchBox(): Locator {
+    return this.page.getByRole('searchbox').or(this.page.getByPlaceholder(/search/i)).first();
+  }
+
+  get validationMessage(): Locator {
+    return this.page
+      .getByRole('alert')
+      .or(this.page.locator('[aria-invalid="true"]'))
+      .or(this.page.getByText(/required|invalid|enter (a|an) valid|must|please (enter|provide)|not valid|can(')?t be (blank|empty)/i))
+      .first();
+  }
+
+  // --- Actions -----------------------------------------------------------------
 
   /**
-   * Start from the dashboard and use the left-hand panel, as the task states.
-   * WHY '/' and not '/lite': /lite is the public sign-up page. The app root
-   * is where a logged-in user lands (the dashboard with the left-hand panel).
+   * Opens Employees via the left-hand panel, as the task describes, rather
+   * than going straight to the Employees URL. '/' is the logged-in dashboard.
    */
   async openFromSidebar() {
     await this.page.goto('/');
     await this.employeesNavLink.click();
-    /**
-     * WHY assert on something visible, not just the URL: a visible
-     * "Add employee" button proves the page actually rendered and is usable.
-     */
     await expect(this.addEmployeeButton).toBeVisible();
   }
 
-  /** Happy path: fill every field (required + optional) and save. */
+  /** Fills every field, required and optional, and saves. */
   async addEmployee(employee: Employee) {
     await this.openAddEmployeeForm();
     await this.fillForm(employee);
+    await this.save();
+  }
+
+  /** Saves the open form and closes the confirmation dialog. */
+  async save() {
     await this.saveButton.click();
     await this.dismissSuccessDialog();
   }
@@ -95,21 +88,10 @@ export class EmployeesPage {
     await expect(this.firstNameInput).toBeVisible();
   }
 
-  /**
-   * Fills the form. `skip` leaves chosen fields empty - used by the negative
-   * tests (e.g. no first name).
-   *
-   * WHY one fill method with a skip option: positive and negative tests type
-   * into the form in exactly the same way, so the steps live in one place.
-   * ALTERNATIVE: a separate "fillFormWithoutFirstName" per case duplicates
-   * code and drifts out of sync.
-   */
+  /** `skip` leaves chosen fields empty, for the negative tests. */
   async fillForm(employee: Employee, skip: Array<keyof Employee> = []) {
-    // Required fields
     if (!skip.includes('firstName')) await this.firstNameInput.fill(employee.firstName);
     if (!skip.includes('lastName')) await this.lastNameInput.fill(employee.lastName);
-
-    // Optional fields - the task asks for ALL fields, including optional ones
     if (!skip.includes('email')) await this.emailInput.fill(employee.email);
     if (!skip.includes('phoneNumber')) await this.phoneInput.fill(employee.phoneNumber);
     if (!skip.includes('startDate')) await this.setStartDate(employee.startDate);
@@ -117,17 +99,9 @@ export class EmployeesPage {
   }
 
   /**
-   * Tries to save the form the way a user would.
-   * Returns 'disabled' if the Save button is locked, 'clicked' otherwise.
-   *
-   * WHY this exists (learned from the first real run): BrightHR blocks
-   * invalid data by DISABLING the "Save new employee" button. A plain
-   * click() waits for the button to become clickable and times out after
-   * 15 s - the test failed even though the app behaved correctly.
-   * Checking the button's state first lets the test treat "disabled" as
-   * the app successfully refusing the data.
-   * ALTERNATIVE: click({ force: true }) would "click" a disabled button,
-   * but that is not something a real user can do, so it proves nothing.
+   * BrightHR blocks invalid data by disabling "Save new employee", and
+   * clicking a disabled button would just time out. So check first and
+   * report 'disabled' as the app refusing the data.
    */
   async attemptSave(): Promise<'clicked' | 'disabled'> {
     await expect(this.saveButton).toBeVisible();
@@ -136,48 +110,22 @@ export class EmployeesPage {
     return 'clicked';
   }
 
-  // ---------------------------------------------------------------------------
-  // Negative-path helpers
-  // ---------------------------------------------------------------------------
+  // --- Negative-path helpers ---------------------------------------------------
 
-  /**
-   * True if the Add employee form is still open after a Save attempt.
-   * Used by boundary tests where "blocked" and "saved" can both be valid,
-   * so the test can branch on what actually happened.
-   */
+  /** True if the form is still open after a Save attempt (disabled or not submitted). */
   async isFormStillOpen(): Promise<boolean> {
     await this.page.waitForLoadState('networkidle').catch(() => {});
-    // A disabled Save button means the form refused to submit - still open.
     if (await this.saveButton.isDisabled().catch(() => false)) return true;
-    // Give a successful save time to close the form before we decide.
     return this.saveButton
       .waitFor({ state: 'hidden', timeout: 5_000 })
       .then(() => false)
       .catch(() => true);
   }
 
-  /** Any visible validation message in the form. */
-  get validationMessage(): Locator {
-    return this.page
-      .getByRole('alert')
-      .or(this.page.locator('[aria-invalid="true"]'))
-      .or(this.page.getByText(/required|invalid|enter (a|an) valid|must|please (enter|provide)|not valid|can(')?t be (blank|empty)/i))
-      .first();
-  }
-
   /**
-   * Proves the app REFUSED to save.
-   *
-   * BrightHR does this in one of two ways, and both count as blocked:
-   *   - the "Save new employee" button is DISABLED (seen on the real site
-   *     for missing names, bad emails and over-long names), or
-   *   - Save was clicked but the form stayed open.
-   *
-   * WHY behaviour first, message second: the form still being open is the
-   * real proof nothing was submitted. The message check is SOFT - wording
-   * can change, and some forms only show messages after a field loses focus;
-   * a missing message is reported as a UX finding without hiding the result.
-   * ALTERNATIVE: matching one exact message string is precise but brittle.
+   * The app refused to save: either Save is disabled, or it was clicked and
+   * the form stayed open. The validation message is a soft check, because
+   * wording changes and some forms only show messages on blur.
    */
   async expectSaveBlocked() {
     await this.page.waitForLoadState('networkidle').catch(() => {});
@@ -190,10 +138,7 @@ export class EmployeesPage {
     await expect.soft(this.validationMessage, 'A validation message should explain the problem').toBeVisible();
   }
 
-  /**
-   * Leaves the form without saving: Cancel / Close button if there is one,
-   * otherwise Escape (the keyboard route every accessible dialog supports).
-   */
+  /** Leaves the form via Cancel/Close, or Escape if there is no button. */
   async closeFormWithoutSaving() {
     const cancel = this.page
       .getByRole('button', { name: /^(cancel|close|discard|back)$/i })
@@ -204,7 +149,6 @@ export class EmployeesPage {
     } else {
       await this.page.keyboard.press('Escape');
     }
-    // Some forms ask "discard changes?" - confirm it if shown.
     const confirm = this.page.getByRole('button', { name: /^(yes|discard|leave|confirm)/i }).first();
     if (await confirm.isVisible().catch(() => false)) await confirm.click();
 
@@ -212,14 +156,9 @@ export class EmployeesPage {
   }
 
   /**
-   * Proves an employee was NOT created.
-   *
-   * WHY reload the list and wait for it to settle first: a "not visible"
-   * check passes instantly on an empty, still-loading page - a false pass.
-   * Reopening Employees and waiting for the network to go quiet makes the
-   * absence check meaningful.
-   * WHY search by a unique text (normally the surname, which contains this
-   * run's random id): no other employee in the shared account can match it.
+   * The employee was not created. Reloads the list and waits for it to settle
+   * first, because a "not visible" check passes instantly on a page that is
+   * still loading.
    */
   async expectEmployeeNotListed(uniqueText: string) {
     await this.openFromSidebar();
@@ -233,17 +172,9 @@ export class EmployeesPage {
   }
 
   /**
-   * Date pickers are the most common source of flaky UI tests, so this is
-   * deliberately defensive.
-   *
-   * WHY two strategies:
-   *  1. If the input accepts typing, type the date in DD/MM/YYYY - fastest and
-   *     exactly what a keyboard user does.
-   *  2. If the input is read-only (a pure calendar widget), open the calendar
-   *     and click the day number.
-   * ALTERNATIVE: setting the value with page.evaluate() is "reliable" but
-   * bypasses the UI and the app's own change events, so the form may not
-   * actually register the date - the test would no longer test the real app.
+   * Types DD/MM/YYYY if the input is editable; otherwise picks the day from
+   * the calendar. Deliberately uses the UI rather than setting the value in
+   * JavaScript, so the app's own change events fire.
    */
   private async setStartDate(date: Date) {
     const input = this.startDateInput;
@@ -251,13 +182,12 @@ export class EmployeesPage {
 
     if (editable) {
       await input.fill(ukDate(date));
-      await input.press('Tab'); // close any picker popup and trigger validation
+      await input.press('Tab');
       return;
     }
 
     await input.click();
-    // The generated date is always in the recent past; if it is in last month
-    // move the calendar back one month first.
+    // Generated dates are in the last 20 days, so at most one month back.
     const now = new Date();
     if (date.getMonth() !== now.getMonth()) {
       await this.page
@@ -272,15 +202,7 @@ export class EmployeesPage {
       .click();
   }
 
-  /**
-   * After saving, BrightHR shows a confirmation dialog (e.g. "employee added"
-   * with options to add another / go to profile). We close it so the next
-   * step starts from a clean page.
-   *
-   * WHY check for the dialog instead of assuming it exists: if BrightHR
-   * removes the dialog in future, the test still passes as long as the
-   * employee is created - we assert the real outcome in scenario 3.
-   */
+  /** Closes the "employee added" confirmation dialog if it appears. */
   private async dismissSuccessDialog() {
     const dialog = this.page.getByRole('dialog');
     await expect(this.saveButton).toBeHidden({ timeout: 15_000 }).catch(() => {});
@@ -296,12 +218,8 @@ export class EmployeesPage {
   }
 
   /**
-   * Checks an employee is shown in the list.
-   *
-   * WHY search by the unique full name: each run's names contain a random id,
-   * so this can only match the employees created by THIS run.
-   * If the list has a search box we use it, because a long shared list may be
-   * paginated or virtualised and the new employee might not be rendered yet.
+   * The employee is in the list. Searches by surname, which carries the
+   * unique run id, then checks the same row also shows the first name.
    */
   async expectEmployeeListed(employee: Employee) {
     const search = this.page.getByRole('searchbox').or(this.page.getByPlaceholder(/search/i)).first();
@@ -310,19 +228,8 @@ export class EmployeesPage {
       await search.fill(employee.lastName);
     }
 
-    /**
-     * WHY a web-first assertion (toBeVisible) instead of reading text and
-     * comparing: it automatically retries until the list has loaded, which
-     * removes timing flakiness without any manual waits.
-     */
-    //
-    // WHY match on the surname (which carries the unique run id) rather than
-    // the exact "First Last" string: some list layouts show "Last, First" or
-    // put the two names in separate elements. The surname is unique on its own.
     await expect(this.page.getByText(employee.lastName).first()).toBeVisible();
 
-    // Extra check: if the list is a table/list, the same row must also show
-    // the first name - proves it is the right person, not just a surname match.
     const row = this.page
       .getByRole('row')
       .or(this.page.getByRole('listitem'))
@@ -335,5 +242,60 @@ export class EmployeesPage {
     if (await search.isVisible().catch(() => false)) {
       await search.clear();
     }
+  }
+
+  // --- Profile and boundary helpers --------------------------------------------
+
+  /** Opens an employee's profile by clicking their name in the Employees list. */
+  async openProfile(employee: Employee) {
+    await this.openFromSidebar();
+    if (await this.searchBox.isVisible().catch(() => false)) {
+      await this.searchBox.fill(employee.lastName);
+    }
+    await this.page.getByText(employee.lastName).first().click();
+  }
+
+  /**
+   * The profile shows every value that was entered. Phone and date use
+   * patterns because the app may format them differently from how they
+   * were typed (e.g. "07123 456789", "5 Sept 2026"). innerText keeps the
+   * line breaks between elements, so neighbouring values do not run together.
+   */
+  async expectProfileShows(employee: Employee) {
+    const profile = this.page.locator('body');
+    await expect(profile, 'First name').toContainText(employee.firstName, { useInnerText: true });
+    await expect(profile, 'Last name').toContainText(employee.lastName, { useInnerText: true });
+    await expect(profile, 'Email').toContainText(employee.email, { useInnerText: true });
+    await expect(profile, 'Job title').toContainText(employee.jobTitle, { useInnerText: true });
+    await expect(profile, 'Phone number').toContainText(phonePattern(employee.phoneNumber), { useInnerText: true });
+    await expect(profile, 'Start date').toContainText(datePattern(employee.startDate), { useInnerText: true });
+  }
+
+  /**
+   * Finds the longest first name the form accepts, with every other field
+   * already valid. Uses the field's maxlength if it has one; otherwise
+   * searches for the longest value that keeps Save enabled.
+   * Returns `upTo` if no limit is found up to that length.
+   */
+  async longestAcceptedFirstName(upTo: number): Promise<number> {
+    const maxLength = await this.firstNameInput.getAttribute('maxlength');
+    if (maxLength) return Number(maxLength);
+
+    const accepted = async (length: number) => {
+      await this.firstNameInput.fill('A'.repeat(length));
+      await this.firstNameInput.blur();
+      if ((await this.firstNameInput.inputValue()).length < length) return false;
+      return this.saveButton.isEnabled();
+    };
+
+    if (await accepted(upTo)) return upTo;
+    let longestOk = 1;
+    let shortestRejected = upTo;
+    while (shortestRejected - longestOk > 1) {
+      const mid = Math.floor((longestOk + shortestRejected) / 2);
+      if (await accepted(mid)) longestOk = mid;
+      else shortestRejected = mid;
+    }
+    return longestOk;
   }
 }

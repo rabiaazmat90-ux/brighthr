@@ -66,7 +66,8 @@ function layerOf(r) {
   // Playwright's JSON writes tags without the "@" (e.g. "negative"), while the
   // tests declare "@negative" - normalise so both forms work.
   const tags = r.tags.map((t) => String(t).replace(/^@/, ''));
-  if (tags.includes('negative')) return 'negative';
+  // Extra positive and boundary tests share the "extra coverage" layer with the negative tests.
+  if (tags.includes('negative') || tags.includes('extended')) return 'negative';
   return 'positive';
 }
 

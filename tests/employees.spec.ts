@@ -3,21 +3,11 @@ import { EmployeesPage } from '../pages/EmployeesPage';
 import { buildEmployee, fullName } from '../utils/employeeFactory';
 
 /**
- * BrightHR Lite technical task - Step 2 scenarios.
- *
- * WHY test.describe.serial:
- * Scenario 3 ("verify both employees are displayed") can only pass if
- * scenarios 1 and 2 created those employees. Serial mode runs them in order
- * and, if one fails, skips the rest - so we never get a misleading failure
- * in scenario 3 that is really caused by scenario 1.
- *
- * ALTERNATIVE: make every test fully independent (each creates its own
- * employee in beforeEach, ideally via an API). That is the better long-term
- * pattern for a large suite and allows parallel runs, but it would not match
- * the task, which describes one connected journey: add, add, then verify.
+ * The task's required journey: add an employee, add another, verify both.
+ * Serial because scenario 3 depends on the data from 1 and 2: if an earlier
+ * scenario fails, the rest are skipped rather than failing misleadingly.
  */
 test.describe.serial('Employees - add and verify', { tag: '@positive' }, () => {
-  // Generated once per run so all three scenarios refer to the same people.
   const firstEmployee = buildEmployee();
   const secondEmployee = buildEmployee();
 
@@ -28,8 +18,6 @@ test.describe.serial('Employees - add and verify', { tag: '@positive' }, () => {
   });
 
   test('Scenario 1: navigate to Employees from the left panel and add an employee with all fields (incl. optional)', async () => {
-    // test.step groups actions in the HTML report / trace so the interview
-    // demo reads like the scenario, and a failure shows which step broke.
     await test.step('Open Employees from the left-hand panel', async () => {
       await employeesPage.openFromSidebar();
     });
@@ -60,12 +48,8 @@ test.describe.serial('Employees - add and verify', { tag: '@positive' }, () => {
   });
 
   test('Scenario 3: navigate to Employees and verify both employees are displayed', async () => {
-    /**
-     * WHY navigate fresh (instead of reusing the page from scenario 2):
-     * each Playwright test gets a brand-new browser page, so this proves the
-     * employees were really SAVED on the server, not just shown in the UI
-     * straight after the form was submitted.
-     */
+    // A fresh page load proves both employees were saved on the server,
+    // not just shown in the UI straight after submitting.
     await test.step('Open Employees from the left-hand panel', async () => {
       await employeesPage.openFromSidebar();
     });

@@ -1,9 +1,6 @@
 /**
- * Reads a required environment variable and fails with a clear message.
- *
- * WHY: without this, a missing .env / missing GitHub secret shows up later as a
- * confusing "element not found" on the login page. Failing fast with a plain
- * message saves debugging time for whoever runs the suite next.
+ * Reads a required environment variable, failing fast with a clear message
+ * instead of a confusing "element not found" on the login page later.
  */
 export function requireEnv(name: string): string {
   const value = process.env[name];

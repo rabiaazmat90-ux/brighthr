@@ -3,28 +3,16 @@ import { LoginPage } from '../pages/LoginPage';
 import { requireEnv } from '../utils/env';
 
 /**
- * LOGIN - NEGATIVE PATHS
- * ----------------------
- * Goal: prove the app REFUSES bad logins and protects its pages from
- * logged-out users. Each test checks behaviour (we stay on the login page,
- * we never reach the app) and, softly, that an error message is shown.
- *
- * WHY start logged OUT: the rest of the suite reuses a saved session. These
- * tests must see the login page, so this file overrides storageState with an
- * empty one (no cookies = a brand-new visitor).
+ * Login: negative paths and access control. Each test checks behaviour
+ * (we stay on the login page and never reach the app) and, softly, that an
+ * error message is shown.
  */
+
+// Start logged out: override the saved session with an empty one.
 test.use({ storageState: { cookies: [], origins: [] } });
 
-/**
- * ACCOUNT-LOCKOUT SAFETY
- * The sandbox account is shared by every candidate and by our CI. Too many
- * failed logins on the REAL email could lock it for everyone. So:
- *   - only ONE test uses the real email with a wrong password;
- *   - "unknown email" and "invalid email" tests use made-up addresses, which
- *     cannot lock the real account.
- * ALTERNATIVE: many wrong-password variations belong on a dedicated throwaway
- * account, not a shared one.
- */
+// The sandbox account is shared, so only ONE test sends a wrong password for
+// the real email; the others use made-up addresses that cannot lock it.
 const UNKNOWN_EMAIL = `not.a.real.user.${Date.now()}@example.com`;
 const WRONG_PASSWORD = 'Wrong-Password-123!';
 
@@ -38,6 +26,7 @@ test.describe('Login - negative paths', { tag: '@negative' }, () => {
   // --- Credentials rejected -------------------------------------------------
 
   test('Wrong password for a real account is rejected', async () => {
+    // The only test that sends a wrong password for the real account (lockout safety).
     await loginPage.goto();
     await test.step('Enter the real email with a wrong password', async () => {
       await loginPage.attemptLogin(requireEnv('BRIGHTHR_EMAIL'), WRONG_PASSWORD);
@@ -48,8 +37,7 @@ test.describe('Login - negative paths', { tag: '@negative' }, () => {
   });
 
   test('Unknown email address is rejected', async () => {
-    // WHY: checks the app does not let in accounts that do not exist.
-    // Using a made-up email also means zero lockout risk.
+    // A made-up address, so it cannot lock the shared account.
     await loginPage.goto();
     await test.step(`Enter an unregistered email (${UNKNOWN_EMAIL})`, async () => {
       await loginPage.attemptLogin(UNKNOWN_EMAIL, WRONG_PASSWORD);
@@ -60,8 +48,6 @@ test.describe('Login - negative paths', { tag: '@negative' }, () => {
   });
 
   test('Badly formatted email address is rejected', async () => {
-    // WHY: format validation should stop an obviously invalid email before
-    // (or when) it reaches the server.
     await loginPage.goto();
     await test.step('Enter "not-an-email" as the email', async () => {
       await loginPage.attemptLogin('not-an-email', WRONG_PASSWORD);
@@ -84,9 +70,7 @@ test.describe('Login - negative paths', { tag: '@negative' }, () => {
   });
 
   test('Real email with an empty password is rejected', async () => {
-    // WHY: password is a required field; an empty value must never log in.
-    // Most forms block this before sending anything, so it does not count as
-    // a failed attempt against the shared account.
+    // Blocked before anything is sent, so it is not a failed attempt on the account.
     await loginPage.goto();
     await test.step('Enter the real email and leave the password empty', async () => {
       await loginPage.attemptLogin(requireEnv('BRIGHTHR_EMAIL'), '');
@@ -99,8 +83,7 @@ test.describe('Login - negative paths', { tag: '@negative' }, () => {
   // --- Access control -------------------------------------------------------
 
   test('Logged-out user cannot open the app and is sent to login', async ({ page }) => {
-    // WHY: a security basic - protected pages must not render without a
-    // session. We open the app root directly, as if from a bookmark.
+    // Opens the app root directly, as if from a bookmark.
     await test.step('Open the app directly without logging in', async () => {
       await page.goto('/');
     });

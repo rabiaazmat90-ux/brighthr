@@ -48,7 +48,7 @@ const SCOPES = {
   ],
   unit: [{ label: 'Unit tests', args: ['--project=unit'], report: 'unit.json' }],
   positive: [{ label: 'Required scenarios', args: [...E2E, '--grep', '@positive'], report: 'positive.json', browser: true }],
-  negative: [{ label: 'Negative paths', args: [...E2E, '--grep', '@negative'], report: 'negative.json', browser: true }],
+  negative: [{ label: 'Extra coverage', args: [...E2E, '--grep', '@negative|@extended'], report: 'negative.json', browser: true }],
 };
 
 /** Current run state, shared with every open dashboard tab. */

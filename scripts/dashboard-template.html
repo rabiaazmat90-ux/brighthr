@@ -168,7 +168,7 @@
           <option value="all">All tests</option>
           <option value="unit">Unit tests only</option>
           <option value="positive">Required scenarios only</option>
-          <option value="negative">Negative paths only</option>
+          <option value="negative">Extra coverage only (negative, boundary, extended)</option>
         </select>
         <label class="check"><input type="checkbox" id="headed"> Show the browser while it runs</label>
         <button class="run-btn" id="runBtn" type="button">Run tests</button>
@@ -201,7 +201,7 @@
     <select id="layer">
       <option value="">All layers</option>
       <option value="positive">Required scenarios (E2E)</option>
-      <option value="negative">Negative paths (E2E)</option>
+      <option value="negative">Extra coverage (E2E)</option>
       <option value="unit">Unit tests</option>
       <option value="setup">Login setup</option>
     </select>
@@ -233,7 +233,7 @@ const DATA = __DATA__;
 
 const LAYERS = {
   positive: { name: 'Required scenarios', short: 'E2E – required' },
-  negative: { name: 'Negative paths', short: 'E2E – negative' },
+  negative: { name: 'Extra coverage', short: 'E2E – extra' },
   unit:     { name: 'Unit tests', short: 'Unit' },
   setup:    { name: 'Login setup', short: 'E2E – setup' },
 };
@@ -285,7 +285,7 @@ else if (all.notrun) h.textContent = `All ${ran} tests that ran have passed`;
 else h.textContent = `All ${tests.length} tests passed`;
 document.getElementById('subline').textContent = all.notrun
   ? `${all.notrun} of ${tests.length} tests have not run yet. Run the suite, then regenerate this report to fill them in.`
-  : `${tests.length} tests across the unit, negative and required-scenario layers.`;
+  : `${tests.length} tests across the unit, extra-coverage and required-scenario layers.`;
 
 document.getElementById('tally').innerHTML = ORDER.filter((s) => s !== 'skipped' && (all[s] || s === 'passed' || s === 'failed'))
   .map((s) => `<div style="--c: var(--${s})"><b>${all[s]}</b><small>${STATUS[s].label}</small></div>`).join('');
