@@ -16,3 +16,6 @@ run-output.txt
 # Generated test results and dashboard
 reports/
 dashboard/
+node_modules
+test-results
+playwright-report
